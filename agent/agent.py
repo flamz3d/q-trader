@@ -24,6 +24,14 @@ class Agent:
 
 		self.model = load_model("models/" + model_name) if is_eval else self._model()
 
+	def other_model(self):
+		model = Sequential()
+		model.add(Dense(24, input_dim=self.state_size, activation='tanh'))
+		model.add(Dense(48, activation='tanh'))
+		model.add(Dense(self.action_size, activation='linear'))
+		model.compile(loss='mse', optimizer=Adam(lr=0.001))
+		return model
+
 	def _model(self):
 		model = Sequential()
 		model.add(Dense(units=64, input_dim=self.state_size, activation="relu"))
@@ -44,7 +52,7 @@ class Agent:
 	def expReplay(self, batch_size):
 		mini_batch = []
 		l = len(self.memory)
-		for i in xrange(l - batch_size + 1, l):
+		for i in range(l - batch_size + 1, l):
 			mini_batch.append(self.memory[i])
 
 		for state, action, reward, next_state, done in mini_batch:
