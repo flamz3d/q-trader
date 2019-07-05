@@ -22,7 +22,7 @@ class Agent:
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 
-		self.model = load_model("models/" + model_name) if is_eval else self._model()
+		self.model = load_model("models/" + model_name) if len(model_name)>0 else self._model()
 
 	def other_model(self):
 		model = Sequential()
