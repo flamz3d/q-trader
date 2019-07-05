@@ -3,7 +3,7 @@
 import numpy as np
 
 from keras.models import Model
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, LSTM, Flatten
 from keras import backend as K
 from keras.optimizers import Adam
 
@@ -27,6 +27,7 @@ HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 ENTROPY_LOSS = 1e-3
 LR = 1e-4 # Lower lr stabilises training greatly
+LSTM_SIZE = 32
 
 def exponential_average(old, new, b1):
 	return old * b1 + (1-b1) * new
@@ -62,10 +63,13 @@ class PPOAgent:
 		self.env = env 
 		self.episode = 0
 		self.observation = self.env.reset()
-		self.num_states = self.observation.size
+		self.num_states = len(self.observation)
 		self.num_actions = self.env.action_space.size
-		print(self.env.action_space, 'action_space', self.env.observation_space, 'observation_space')
-		print("nUMAAAAS>>>", self.num_states, self.num_actions)
+		self.num_timesteps = len(self.observation)
+		self.state_dimensions = len(self.observation[0])
+		print(">>>>> TIMSEP", self.num_timesteps);
+		print(">>>>> STATEDIME", self.state_dimensions);
+		#print(self.env.action_space, 'action_space', self.env.observation_space, 'observation_space')
 		self.dummy_action, self.dummy_value = np.zeros((1, self.num_actions)), np.zeros((1, 1))
 
 		self.critic = self.build_critic()
@@ -92,11 +96,14 @@ class PPOAgent:
 
 
 	def build_actor(self):
-		state_input = Input(shape=(self.num_states,))
+		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
 		advantage = Input(shape=(1,))
 		old_prediction = Input(shape=(self.num_actions,))
 
-		x = Dense(HIDDEN_SIZE, activation='tanh')(state_input)
+		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
+		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		flattenned = Flatten()(lstm_1)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(flattenned)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -107,6 +114,7 @@ class PPOAgent:
 					  loss=[proximal_policy_optimization_loss(
 						  advantage=advantage,
 						  old_prediction=old_prediction)])
+		print("ACTOR MODEL")
 		model.summary()
 
 		return model
@@ -133,8 +141,12 @@ class PPOAgent:
 
 	def build_critic(self):
 
-		state_input = Input(shape=(self.num_states,))
-		x = Dense(HIDDEN_SIZE, activation='tanh')(state_input)
+		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
+
+		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
+		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		flattenned = Flatten()(lstm_1)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(flattenned)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -142,6 +154,9 @@ class PPOAgent:
 
 		model = Model(inputs=[state_input], outputs=[out_value])
 		model.compile(optimizer=Adam(lr=LR), loss='mse')
+
+		print("CRITIC MODEL")
+		model.summary()
 
 		return model
 
@@ -155,7 +170,8 @@ class PPOAgent:
 		self.reward = []
 
 	def get_action(self):
-		p = self.actor.predict([self.observation.reshape(1, self.num_states), self.dummy_value, self.dummy_action])
+		p = self.actor.predict([[self.observation], self.dummy_value, self.dummy_action])
+		#p = self.actor.predict(self.observation)
 		if self.val is False:
 			action = np.random.choice(self.num_actions, p=np.nan_to_num(p[0]))
 		else:
@@ -165,7 +181,7 @@ class PPOAgent:
 		return action, action_matrix, p
 
 	def get_action_continuous(self):
-		p = self.actor.predict([self.observation.reshape(1, self.num_states), self.dummy_value, self.dummy_action])
+		p = self.actor.predict([self.observation, self.dummy_value, self.dummy_action])
 		if self.val is False:
 			action = action_matrix = p[0] + np.random.normal(loc=0, scale=NOISE, size=p[0].shape)
 		else:
@@ -226,7 +242,9 @@ class PPOAgent:
 			critic_loss = self.critic.fit([obs], [reward], batch_size=BATCH_SIZE, shuffle=True, epochs=EPOCHS, verbose=False)
 			self.writer.add_scalar('Actor loss', actor_loss.history['loss'][-1], self.gradient_steps)
 			self.writer.add_scalar('Critic loss', critic_loss.history['loss'][-1], self.gradient_steps)
-
+			data_dict = self.env.stats()
+			for key,val in data_dict.items():
+				self.writer.add_scalar(key, val, self.gradient_steps)
 			self.gradient_steps += 1
 			print("episode:" + str(self.episode))
 			if (self.gradient_steps % 100 == 0):
