@@ -102,8 +102,8 @@ class PPOAgent:
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
 		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		flattenned = Flatten()(lstm_1)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(flattenned)
+		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_2)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -145,8 +145,8 @@ class PPOAgent:
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
 		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		flattenned = Flatten()(lstm_1)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(flattenned)
+		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_2)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -199,6 +199,7 @@ class PPOAgent:
 	def get_batch(self):
 		batch = [[], [], [], []]
 		tmp_batch = [[], [], []]
+
 		while len(batch[0]) < BUFFER_SIZE:
 			if CONTINUOUS is False:
 				action, action_matrix, predicted_action = self.get_action()
