@@ -3,6 +3,8 @@ import math
 import pandas as pd
 from ta import *
 
+cache = {}
+
 # prints formatted price
 def formatPrice(n):
 	return ("-$" if n < 0 else "$") + "{0:.2f}".format(abs(n))
@@ -51,6 +53,9 @@ def sigmoid(x):
 
 # return indicators for n-day ending at time t
 def getIndicators(dataFrame, t, n):
+	
+	if (t in cache):
+		return cache[t]
 
 	state_vector = list()
 
@@ -66,6 +71,7 @@ def getIndicators(dataFrame, t, n):
 			current_vector.append(val)
 		state_vector.append(current_vector)
 	
+	cache[t] = state_vector
 	return state_vector
 
 # returns an an n-day state representation ending at time t
