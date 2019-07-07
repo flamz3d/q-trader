@@ -1,13 +1,13 @@
 # Initial framework taken from https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
 
 import numpy as np
-
+import keras
 from keras.models import Model
 from keras.layers import Input, Dense, LSTM, Flatten
 from keras import backend as K
 from keras.optimizers import Adam
-
 from tensorboardX import SummaryWriter
+import keras.losses
 
 ENV = 'STOCK'
 CONTINUOUS = False
@@ -59,7 +59,7 @@ def proximal_policy_optimization_loss_continuous(advantage, old_prediction):
 
 
 class PPOAgent:
-	def __init__(self, env):
+	def __init__(self, env, model_file = None):
 		self.env = env 
 		self.episode = 0
 		self.observation = self.env.reset()
@@ -74,7 +74,7 @@ class PPOAgent:
 
 		self.critic = self.build_critic()
 		if CONTINUOUS is False:
-			self.actor = self.build_actor()
+			self.actor = self.build_actor(model_file)
 		else:
 			self.actor = self.build_actor_continuous()
 
@@ -95,15 +95,22 @@ class PPOAgent:
 		return name
 
 
-	def build_actor(self):
+	def build_actor(self, model_file=None):
+		if (model_file != None):
+			keras.losses.custom_loss = proximal_policy_optimization_loss
+			model = keras.models.load_model(model_file)
+			print("LOADED ACTOR MODEL")
+			model.summary()
+			return model
+
 		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
 		advantage = Input(shape=(1,))
 		old_prediction = Input(shape=(self.num_actions,))
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
-		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_2)
+		#lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		lstm_1 = LSTM(LSTM_SIZE)(lstm_0)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_1)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -144,9 +151,9 @@ class PPOAgent:
 		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
-		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_2)
+		#lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		lstm_1 = LSTM(LSTM_SIZE)(lstm_0)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_1)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -230,7 +237,11 @@ class PPOAgent:
 		pred = np.reshape(pred, (pred.shape[0], pred.shape[2]))
 		return obs, action, pred, reward
 
-	def run(self):
+	def test(self):
+		print("allo")
+
+	def run(self, episodeCount):
+		EPISODES = episodeCount
 		while self.episode < EPISODES:
 			obs, action, pred, reward = self.get_batch()
 			obs, action, pred, reward = obs[:BUFFER_SIZE], action[:BUFFER_SIZE], pred[:BUFFER_SIZE], reward[:BUFFER_SIZE]
@@ -247,7 +258,6 @@ class PPOAgent:
 			for key,val in data_dict.items():
 				self.writer.add_scalar(key, val, self.gradient_steps)
 			self.gradient_steps += 1
-			print("episode:" + str(self.episode))
 			if (self.gradient_steps % 100 == 0):
 				print("saving")
 				self.actor.save('./models/model_actor_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')

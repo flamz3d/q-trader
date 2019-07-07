@@ -11,13 +11,15 @@ def formatPrice(n):
 
 # returns the vector containing stock data from a fixed file
 def getStockDataVec(key):
-	vec = []
-	lines = open("data/" + key + ".csv", "r").read().splitlines()
+	df = pd.read_csv("data/" + key + ".csv", sep=',')
+	return list(df['Close'])
+	# vec = []
+	# lines = open("data/" + key + ".csv", "r").read().splitlines()
 
-	for line in lines[1:]:
-		vec.append(float(line.split(",")[4]))
+	# for line in lines[1:]:
+	# 	vec.append(float(line.split(",")[4]))
 
-	return vec
+	# return vec
 
 def getPandasDataVec(key):
 	df = pd.read_csv("data/" + key + ".csv", sep=',')
@@ -43,9 +45,11 @@ def getPandasDataVec(key):
 	zcores = []
 	for i in indicators:
 		# z-score
+		#zscore = np.nan_to_num((df[i] - df[i].mean())/df[i].std(ddof=0))
 		zscore = (df[i] - df[i].mean())/df[i].std(ddof=0)
 		zcores.append(zscore)
-	return zcores
+	return pd.DataFrame(zcores).fillna(value=0)
+	#return zcores
 
 # returns the sigmoid
 def sigmoid(x):
@@ -53,23 +57,31 @@ def sigmoid(x):
 
 # return indicators for n-day ending at time t
 def getIndicators(dataFrame, t, n):
-	
+
 	if (t in cache):
 		return cache[t]
 
 	state_vector = list()
+	slice = dataFrame.iloc[:, t:t+n]
+	#print(slice)
+	#print(slice)
+	#print("---------------------")
+	for column in slice:
+		state_vector.append(list(slice[column]))
+	
+	missing_cols = n - len(state_vector)
+	for m in range(missing_cols):
+		state_vector.append(state_vector[0])
 
-	for timestep in range(n-1):
-		current_vector = list()
-		for i in dataFrame:
-			# z-score
-			#zscore = (dataFrame[i] - dataFrame[i].mean())/dataFrame[i].std(ddof=0)
-			window = list(i)[t:t+n]
-			val = window[0]
-			if timestep<len(window):
-				val = window[timestep]
-			current_vector.append(val)
-		state_vector.append(current_vector)
+	# for timestep in range(n-1):
+	# 	current_vector = list()
+	# 	for i in dataFrame:
+	# 		window = list(i)[t:t+n]
+	# 		val = window[0]
+	# 		if timestep<len(window):
+	# 			val = window[timestep]
+	# 		current_vector.append(val)
+	# 	state_vector.append(current_vector)
 	
 	cache[t] = state_vector
 	return state_vector
