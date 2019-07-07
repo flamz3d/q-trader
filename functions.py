@@ -58,11 +58,15 @@ def sigmoid(x):
 # return indicators for n-day ending at time t
 def getIndicators(dataFrame, t, n):
 
+	d = t - n + 1
+	if d < 0:
+		d = 0
 	if (t in cache):
 		return cache[t]
 
 	state_vector = list()
-	slice = dataFrame.iloc[:, t:t+n]
+	slice = dataFrame.iloc[:, d:d+n]
+	
 	#print(slice)
 	#print(slice)
 	#print("---------------------")
