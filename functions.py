@@ -23,9 +23,10 @@ def getStockDataVec(key):
 
 def getPandasDataVec(key):
 	df = pd.read_csv("data/" + key + ".csv", sep=',')
+	df['open_close_diff'] = df['Close'] - df['Open']
 	df = add_all_ta_features(df, "Open", "High", "Low", "Close", "Volume", fillna=True)
 
-	indicators = ['Close', 'volume_adi', 'volume_obv', 'volume_cmf', 'volume_fi', 'volume_em',
+	indicators = ['Close', 'open_close_diff', 'volume_adi', 'volume_obv', 'volume_cmf', 'volume_fi', 'volume_em',
 	   'volume_vpt', 'volume_nvi', 'volatility_atr', 'volatility_bbh',
 	   'volatility_bbl', 'volatility_bbm', 'volatility_bbhi',
 	   'volatility_bbli', 'volatility_kcc', 'volatility_kch', 'volatility_kcl',
@@ -55,10 +56,20 @@ def getPandasDataVec(key):
 def sigmoid(x):
 	return 1 / (1 + math.exp(-x))
 
+
+# return debug info
+def getDebugObservations(closeData, dataFrame, t, n):
+	d = t - (n )
+	if d < 0:
+		d = 0
+	
+	slice = dataFrame.iloc[:, d:d+n]
+	return { "time" : t, "observed": (d, d+n), "window_open_close_zscore" : slice.loc['open_close_diff'].tolist()  }
+
 # return indicators for n-day ending at time t
 def getIndicators(dataFrame, t, n):
 
-	d = t - n + 1
+	d = t - (n )
 	if d < 0:
 		d = 0
 	if (t in cache):
@@ -66,7 +77,7 @@ def getIndicators(dataFrame, t, n):
 
 	state_vector = list()
 	slice = dataFrame.iloc[:, d:d+n]
-	
+
 	#print(slice)
 	#print(slice)
 	#print("---------------------")
