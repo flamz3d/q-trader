@@ -3,7 +3,7 @@
 import numpy as np
 import keras
 from keras.models import Model
-from keras.layers import Input, Dense, LSTM, Flatten
+from keras.layers import Input, Dense, LSTM, Flatten, Dropout
 from keras import backend as K
 from keras.optimizers import Adam
 from tensorboardX import SummaryWriter
@@ -108,9 +108,10 @@ class PPOAgent:
 		old_prediction = Input(shape=(self.num_actions,))
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
-		#lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		lstm_1 = LSTM(LSTM_SIZE)(lstm_0)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_1)
+		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
+		dropout = Dropout(0.25)(lstm_2)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(dropout)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
@@ -151,9 +152,10 @@ class PPOAgent:
 		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
 
 		lstm_0 = LSTM(LSTM_SIZE, return_sequences=True)(state_input)
-		#lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
-		lstm_1 = LSTM(LSTM_SIZE)(lstm_0)
-		x = Dense(HIDDEN_SIZE, activation='tanh')(lstm_1)
+		lstm_1 = LSTM(LSTM_SIZE, return_sequences=True)(lstm_0)
+		lstm_2 = LSTM(LSTM_SIZE)(lstm_1)
+		dropout = Dropout(0.25)(lstm_2)
+		x = Dense(HIDDEN_SIZE, activation='tanh')(dropout)
 		for _ in range(NUM_LAYERS - 1):
 			x = Dense(HIDDEN_SIZE, activation='tanh')(x)
 
