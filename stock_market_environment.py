@@ -17,11 +17,11 @@ class StockPredict:
             exit();
         
         self.iterations = 0
-        self.batch_size = 32
         self.total_trades = 0
         self.total_successfull_trades = 0
         self.total_profit = 0
         self.pbar = tqdm(total=100)
+        self.debug_observation = {}
         self.reset()
     
     def reset(self):
@@ -62,6 +62,7 @@ class StockPredict:
             self.inventory.append(self.data[self.t])
             #self.debug_obs.append(self.debug_observation)
             #print("Buy: " + formatPrice(self.data[self.t]))
+            #print("buying at time ", self.t, "->", self.debug_observation)
         elif action == 2 and len(self.inventory) > 0: # sell
             self.bought_price = self.inventory.pop(0)
             reward = max(self.data[self.t] - self.bought_price, 0)
@@ -69,6 +70,7 @@ class StockPredict:
             self.total_trades += 1
             if (reward>0):
                 self.total_successfull_trades += 1
+            #print("selling at time ", self.t, "reward", reward, "->", self.debug_observation)
 
             #print("buy info:", self.debug_obs.pop(0))
             #print("sell info:", self.debug_observation)
@@ -78,10 +80,11 @@ class StockPredict:
         done = True if self.t == self.l - 1 else False
         #self.memory.append((state, action, reward, next_state, done))
         #state = next_state
-        self.observation_space = getIndicators(self.pandas_data, self.t, self.window_size)
         #self.debug_observation = getDebugObservations(self.data, self.pandas_data, self.t, self.window_size)
         self.current_lesson += 1
         self.t += 1
+        self.observation_space = getIndicators(self.pandas_data, self.t, self.window_size)
+        #self.debug_observation = getDebugObservations(self.data, self.pandas_data, self.t, self.window_size)
         progress = (int)((self.t / len(self.data))*100)
         self.pbar.n = progress
         self.pbar.last_print_n = progress
