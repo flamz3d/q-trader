@@ -1,9 +1,11 @@
 import numpy as np
 import math
 import pandas as pd
+from tqdm import tqdm
 from ta import *
 
 cache = {}
+dataframes = {}
 
 # prints formatted price
 def formatPrice(n):
@@ -21,12 +23,12 @@ def getStockDataVec(key):
 
 	# return vec
 
-def getPandasDataVec(key):
+def prepareDataFrames(key, window):
 	df = pd.read_csv("data/" + key + ".csv", sep=',')
 	df['open_close_diff'] = df['Close'] - df['Open']
 	df = add_all_ta_features(df, "Open", "High", "Low", "Close", "Volume", fillna=True)
-
-	indicators = ['Close', 'open_close_diff', 'volume_adi', 'volume_obv', 'volume_cmf', 'volume_fi', 'volume_em',
+	
+	indicators = ['open_close_diff', 'volume_adi', 'volume_obv', 'volume_cmf', 'volume_fi', 'volume_em',
 	   'volume_vpt', 'volume_nvi', 'volatility_atr', 'volatility_bbh',
 	   'volatility_bbl', 'volatility_bbm', 'volatility_bbhi',
 	   'volatility_bbli', 'volatility_kcc', 'volatility_kch', 'volatility_kcl',
@@ -43,14 +45,19 @@ def getPandasDataVec(key):
 	   'momentum_uo', 'momentum_stoch', 'momentum_stoch_signal', 'momentum_wr',
 	   'momentum_ao', 'others_dr', 'others_dlr', 'others_cr']
 
-	zcores = []
-	for i in indicators:
-		# z-score
-		#zscore = np.nan_to_num((df[i] - df[i].mean())/df[i].std(ddof=0))
-		zscore = (df[i] - df[i].mean())/df[i].std(ddof=0)
-		zcores.append(zscore)
-	return pd.DataFrame(zcores).fillna(value=0)
-	#return zcores
+
+	df = df [indicators]
+	rows = df['open_close_diff'].count()
+	for i in tqdm(range(rows), desc="caching"):
+			large_window = df[0:i+1]
+			zscore = ((large_window - large_window.mean(axis=0)) / large_window.std(ddof=0)).fillna	(value=0)
+			missing_rows = window - large_window['open_close_diff'].count()
+			df_try = zscore.loc[0]
+			if missing_rows>0:
+				zscore = zscore.append([df_try]*missing_rows,ignore_index=True)
+
+			dataframes[i] = zscore.tail(window).values.tolist();
+	return dataframes
 
 # returns the sigmoid
 def sigmoid(x):
@@ -68,38 +75,39 @@ def getDebugObservations(closeData, dataFrame, t, n):
 
 # return indicators for n-day ending at time t
 def getIndicators(dataFrame, t, n):
+	return dataframes[t]
 
-	d = t - (n )
-	if d < 0:
-		d = 0
-	if (t in cache):
-		return cache[t]
+	# d = t - (n )
+	# if d < 0:
+	# 	d = 0
+	# if (t in cache):
+	# 	return cache[t]
 
-	state_vector = list()
-	slice = dataFrame.iloc[:, d:d+n]
+	# state_vector = list()
+	# slice = dataFrame.iloc[:, d:d+n]
 
-	#print(slice)
-	#print(slice)
-	#print("---------------------")
-	for column in slice:
-		state_vector.append(list(slice[column]))
+	# #print(slice)
+	# #print(slice)
+	# #print("---------------------")
+	# for column in slice:
+	# 	state_vector.append(list(slice[column]))
 	
-	missing_cols = n - len(state_vector)
-	for m in range(missing_cols):
-		state_vector.append(state_vector[0])
+	# missing_cols = n - len(state_vector)
+	# for m in range(missing_cols):
+	# 	state_vector.append(state_vector[0])
 
-	# for timestep in range(n-1):
-	# 	current_vector = list()
-	# 	for i in dataFrame:
-	# 		window = list(i)[t:t+n]
-	# 		val = window[0]
-	# 		if timestep<len(window):
-	# 			val = window[timestep]
-	# 		current_vector.append(val)
-	# 	state_vector.append(current_vector)
+	# # for timestep in range(n-1):
+	# # 	current_vector = list()
+	# # 	for i in dataFrame:
+	# # 		window = list(i)[t:t+n]
+	# # 		val = window[0]
+	# # 		if timestep<len(window):
+	# # 			val = window[timestep]
+	# # 		current_vector.append(val)
+	# # 	state_vector.append(current_vector)
 	
-	cache[t] = state_vector
-	return state_vector
+	# cache[t] = state_vector
+	# return state_vector
 
 # returns an an n-day state representation ending at time t
 def getState(data, t, n):

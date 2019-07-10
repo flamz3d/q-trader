@@ -11,10 +11,10 @@ class StockPredict:
         self.episode_count = episode_count
         self.window_size = window_size
         self.data = getStockDataVec(stock_name)
-        self.pandas_data = getPandasDataVec(stock_name)
-        if (len(self.data) != len(self.pandas_data.count())):
-            print("pandas dataframe and data count does not match, something is wrong with the dataset")
-            exit();
+        self.dataframes = prepareDataFrames(stock_name, window_size)
+        #if (len(self.data) != len(self.dataframes[0].count())):
+        #    print("pandas dataframe and data count does not match, something is wrong with the dataset")
+        #exit();
         
         self.iterations = 0
         self.total_trades = 0
@@ -27,8 +27,8 @@ class StockPredict:
     def reset(self):
         self.action_space = np.zeros(NUM_ACTIONS)
         #self.observation_space = getState(self.data, 0, self.window_size + 1)[0]
-        self.observation_space = getIndicators(self.pandas_data, 0, self.window_size)
-        #self.debug_observation = getDebugObservations(self.data, self.pandas_data, 0, self.window_size)
+        self.observation_space = getIndicators(self.dataframes, 0, self.window_size)
+        #self.debug_observation = getDebugObservations(self.data, self.dataframes, 0, self.window_size)
         self.current_lesson = 0
         self.l = len(self.data) - 1
         self.inventory = []
@@ -80,11 +80,11 @@ class StockPredict:
         done = True if self.t == self.l - 1 else False
         #self.memory.append((state, action, reward, next_state, done))
         #state = next_state
-        #self.debug_observation = getDebugObservations(self.data, self.pandas_data, self.t, self.window_size)
+        #self.debug_observation = getDebugObservations(self.data, self.dataframes, self.t, self.window_size)
         self.current_lesson += 1
         self.t += 1
-        self.observation_space = getIndicators(self.pandas_data, self.t, self.window_size)
-        #self.debug_observation = getDebugObservations(self.data, self.pandas_data, self.t, self.window_size)
+        self.observation_space = getIndicators(self.dataframes, self.t, self.window_size)
+        #self.debug_observation = getDebugObservations(self.data, self.dataframes, self.t, self.window_size)
         progress = (int)((self.t / len(self.data))*100)
         self.pbar.n = progress
         self.pbar.last_print_n = progress
