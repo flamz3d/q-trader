@@ -81,9 +81,9 @@ class StockPredict:
         #self.memory.append((state, action, reward, next_state, done))
         #state = next_state
         #self.debug_observation = getDebugObservations(self.data, self.dataframes, self.t, self.window_size)
+        self.observation_space = getIndicators(self.dataframes, self.t, self.window_size)
         self.current_lesson += 1
         self.t += 1
-        self.observation_space = getIndicators(self.dataframes, self.t, self.window_size)
         #self.debug_observation = getDebugObservations(self.data, self.dataframes, self.t, self.window_size)
         progress = (int)((self.t / len(self.data))*100)
         self.pbar.n = progress

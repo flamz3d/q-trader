@@ -55,7 +55,6 @@ def prepareDataFrames(key, window):
 			df_try = zscore.loc[0]
 			if missing_rows>0:
 				zscore = zscore.append([df_try]*missing_rows,ignore_index=True)
-
 			dataframes[i] = zscore.tail(window).values.tolist();
 	return dataframes
 
