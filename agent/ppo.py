@@ -1,5 +1,9 @@
 # Initial framework taken from https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
 
+#things to try
+# - 1 LSTM sequence layers instead of 2
+# - relu instead of tan
+
 import numpy as np
 import keras
 from keras.models import Model
@@ -59,7 +63,7 @@ def proximal_policy_optimization_loss_continuous(advantage, old_prediction):
 
 
 class PPOAgent:
-	def __init__(self, env, model_file = None):
+	def __init__(self, env, actor_model_file = None, critic_model_file = None):
 		self.env = env 
 		self.episode = 0
 		self.observation = self.env.reset()
@@ -67,16 +71,21 @@ class PPOAgent:
 		self.num_actions = self.env.action_space.size
 		self.num_timesteps = len(self.observation)
 		self.state_dimensions = len(self.observation[0])
-		print(">>>>> TIMSEP", self.num_timesteps);
-		print(">>>>> STATEDIME", self.state_dimensions);
-		#print(self.env.action_space, 'action_space', self.env.observation_space, 'observation_space')
 		self.dummy_action, self.dummy_value = np.zeros((1, self.num_actions)), np.zeros((1, 1))
 
 		self.critic = self.build_critic()
 		if CONTINUOUS is False:
-			self.actor = self.build_actor(model_file)
+			self.actor = self.build_actor()
 		else:
 			self.actor = self.build_actor_continuous()
+
+		if actor_model_file is not None:
+			print("loading actor weights from", actor_model_file)
+			self.actor.load_weights(actor_model_file)
+
+		if critic_model_file is not None:
+			print("loading critic weights from", critic_model_file)
+			self.critic.load_weights(critic_model_file)
 
 		self.val = False
 		self.reward = []
@@ -95,13 +104,17 @@ class PPOAgent:
 		return name
 
 
-	def build_actor(self, model_file=None):
-		if (model_file != None):
-			keras.losses.custom_loss = proximal_policy_optimization_loss
-			model = keras.models.load_model(model_file)
-			print("LOADED ACTOR MODEL")
-			model.summary()
-			return model
+	def build_actor(self):
+		#if (model_file != None):
+			#advantage = Input(shape=(1,))
+			#old_prediction = Input(shape=(self.num_actions,))
+			#loss = proximal_policy_optimization_loss(
+			#			  advantage=advantage,
+			#			  old_prediction=old_prediction)
+			#model = keras.models.load_model(model_file, custom_objects={'loss':loss})
+			#print("LOADED ACTOR MODEL")
+			#model.summary()
+			#return model
 
 		state_input = Input(shape=(self.num_timesteps, self.state_dimensions))
 		advantage = Input(shape=(1,))
@@ -163,7 +176,6 @@ class PPOAgent:
 
 		model = Model(inputs=[state_input], outputs=[out_value])
 		model.compile(optimizer=Adam(lr=LR), loss='mse')
-
 		print("CRITIC MODEL")
 		model.summary()
 
@@ -260,10 +272,9 @@ class PPOAgent:
 			for key,val in data_dict.items():
 				self.writer.add_scalar(key, val, self.gradient_steps)
 			self.gradient_steps += 1
-			if (self.gradient_steps % 100 == 0):
-				print("saving")
-				self.actor.save('./models/model_actor_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
-				self.critic.save('./models/model_critic_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
+			if (self.gradient_steps % 2 == 0):
+				self.actor.save_weights('./models/model_actor_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
+				self.critic.save_weights('./models/model_critic_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
 
 class Env:
 	def __init__(self):

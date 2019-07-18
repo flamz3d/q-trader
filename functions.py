@@ -3,9 +3,22 @@ import math
 import pandas as pd
 from tqdm import tqdm
 from ta import *
+from dateutil.parser import parse
+import datetime
 
 cache = {}
 dataframes = {}
+
+def to_date(str):
+	dt = None
+	try:
+		dt = parse(str)
+	except:
+		dt = datetime.datetime.strptime(str, '%Y-%m-%d %H-%p')
+	if dt is None:
+		print("date format not recognized", str)
+		exit()
+	return dt
 
 # prints formatted price
 def formatPrice(n):
@@ -25,6 +38,20 @@ def getStockDataVec(key):
 
 def prepareDataFrames(key, window):
 	df = pd.read_csv("data/" + key + ".csv", sep=',')
+
+	# check if dataset needs to be reversed chronologically
+	last_date = to_date(df['Date'].get_value(len(df)-1, 'datetime'));
+	first_date = to_date(df['Date'].get_value(0, 'datetime'));
+	if ((last_date - first_date).total_seconds() < 0):
+		print("data is in reversed chronological order, reversing dataframe")
+		df = df.reindex(index=df.index[::-1])
+		df.reset_index(inplace=True, drop=True) 
+		last_date = to_date(df['Date'].get_value(len(df)-1, 'datetime'));
+		first_date = to_date(df['Date'].get_value(0, 'datetime'));
+		if ((last_date - first_date).total_seconds() < 0):
+			print("unable to reverse dataset")
+			exit()
+
 	df['open_close_diff'] = df['Close'] - df['Open']
 	df = add_all_ta_features(df, "Open", "High", "Low", "Close", "Volume", fillna=True)
 	
