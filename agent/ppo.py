@@ -272,7 +272,7 @@ class PPOAgent:
 			for key,val in data_dict.items():
 				self.writer.add_scalar(key, val, self.gradient_steps)
 			self.gradient_steps += 1
-			if (self.gradient_steps % 2 == 0):
+			if (self.gradient_steps % 10 == 0):
 				self.actor.save_weights('./models/model_actor_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
 				self.critic.save_weights('./models/model_critic_' + self.env.name + '_' + str(self.gradient_steps) + '.h5')
 
