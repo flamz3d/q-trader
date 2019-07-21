@@ -1,5 +1,5 @@
 import git
-import tensorboard_x
 
-def git_changeset():
-	return "199182912"
+def tbx_git_changeset():
+		repo = git.Repo(search_parent_directories=True)
+		return repo.head.object.hexsha

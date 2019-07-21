@@ -2,6 +2,7 @@ from agent.ppo import PPOAgent
 from stock_market_environment import StockPredict
 import sys
 import os
+from tensorboard_extensions import *
 
 if len(sys.argv) < 4:
 	print ("Usage: python train.py [stock] [window] [episodes]")
@@ -14,6 +15,8 @@ if len(sys.argv) == 5:
     model_file = sys.argv[4]
 
 if __name__ == '__main__':
+    actor_model_file = None
+    critic_model_file = None
     if model_file is not None:
         model_file_path = os.path.dirname(os.path.abspath(model_file))
         base_filename = os.path.basename(os.path.abspath(model_file))

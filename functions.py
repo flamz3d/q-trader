@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import pandas as pd
+import warnings
 from tqdm import tqdm
 from ta import *
 from dateutil.parser import parse
@@ -8,13 +9,14 @@ import datetime
 
 cache = {}
 dataframes = {}
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def to_date(str):
 	dt = None
 	try:
 		dt = parse(str)
 	except:
-		dt = datetime.datetime.strptime(str, '%Y-%m-%d %H-%p')
+		dt = datetime.datetime.strptime(str, '%Y-%m-%d %I-%p')
 	if dt is None:
 		print("date format not recognized", str)
 		exit()
@@ -36,6 +38,28 @@ def getStockDataVec(key):
 
 	# return vec
 
+def partOfWeek(p):
+	# returns 0 for week, 1 for weekend
+	if (p.weekday()<5):
+		return 0.0
+	return 1.0
+
+def partOfDay(p):
+    return (
+    	# morning
+        -1.0 if 5 <= p.hour <= 11
+        else
+        # day
+        0 if 12 <= p.hour <= 22
+        else
+        # night
+        1.0
+    )
+
+def timeOfDay(p):
+	print(partOfDay(p))
+	return p
+
 def prepareDataFrames(key, window):
 	df = pd.read_csv("data/" + key + ".csv", sep=',')
 
@@ -53,7 +77,12 @@ def prepareDataFrames(key, window):
 			exit()
 
 	df['open_close_diff'] = df['Close'] - df['Open']
-	df = add_all_ta_features(df, "Open", "High", "Low", "Close", "Volume", fillna=True)
+	df['part_of_day'] = df.apply(lambda row: partOfDay(to_date(row['Date'])), axis=1)
+	df['part_of_week'] = df.apply(lambda row: partOfWeek(to_date(row['Date'])), axis=1)
+	
+	print("computing all stock signals...")
+	with np.errstate(divide='ignore', invalid='ignore'):
+		df = add_all_ta_features(df, "Open", "High", "Low", "Close", "Volume", fillna=True)
 	
 	indicators = ['open_close_diff', 'volume_adi', 'volume_obv', 'volume_cmf', 'volume_fi', 'volume_em',
 	   'volume_vpt', 'volume_nvi', 'volatility_atr', 'volatility_bbh',
@@ -71,18 +100,30 @@ def prepareDataFrames(key, window):
 	   'trend_aroon_ind', 'momentum_rsi', 'momentum_mfi', 'momentum_tsi',
 	   'momentum_uo', 'momentum_stoch', 'momentum_stoch_signal', 'momentum_wr',
 	   'momentum_ao', 'others_dr', 'others_dlr', 'others_cr']
+	
+	extra_features = ['part_of_day', 'part_of_week']
+	
+	indicators_dataframe = df [indicators]
+	extra_feature_dataframe = df[extra_features]
 
-
-	df = df [indicators]
 	rows = df['open_close_diff'].count()
 	for i in tqdm(range(rows), desc="caching"):
-			large_window = df[0:i+1]
+			large_window = indicators_dataframe[0:i+1]
+			large_window_ex = extra_feature_dataframe[0:i+1]
+
 			zscore = ((large_window - large_window.mean(axis=0)) / large_window.std(ddof=0)).fillna	(value=0)
 			missing_rows = window - large_window['open_close_diff'].count()
-			df_try = zscore.loc[0]
+			duplicate_row = zscore.loc[0]
+			duplicate_ex = large_window_ex.loc[0]
+
 			if missing_rows>0:
-				zscore = zscore.append([df_try]*missing_rows,ignore_index=True)
-			dataframes[i] = zscore.tail(window).values.tolist();
+				zscore = zscore.append([duplicate_row]*missing_rows,ignore_index=True)
+				large_window_ex = large_window_ex.append([duplicate_ex]*missing_rows,ignore_index=True)
+
+			merged = pd.concat([zscore, large_window_ex], axis=1, sort=False)
+			#print(merged.tail(window))
+			dataframes[i] = merged.values.tolist();
+
 	return dataframes
 
 # returns the sigmoid

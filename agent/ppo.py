@@ -12,6 +12,7 @@ from keras import backend as K
 from keras.optimizers import Adam
 from tensorboardX import SummaryWriter
 import keras.losses
+from tensorboard_extensions import *
 
 ENV = 'STOCK'
 CONTINUOUS = False
@@ -100,6 +101,7 @@ class PPOAgent:
 			name += 'continous/'
 		else:
 			name += 'discrete/'
+		name += tbx_git_changeset() + "/"
 		name += self.env.name
 		return name
 
